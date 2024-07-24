@@ -12,14 +12,15 @@ app.use(express.json())
 
 
 app.use(cors({
-  origin: ["lnmiitbarber-digvijay1209s-projects.vercel.app"],
+  origin: ["http://localhost:5173"],
   methods: ["GET", "POST"],
   credentials: true
 }))
 app.use(cookieParser())
 
-mongoose.connect("mongodb://127.0.0.1:27017/employee");
 
+//mongoose.connect("mongodb://127.0.0.1:27017/employee");
+mongoose.connect("mongodb+srv://dig:ab@barber.it6z4k9.mongodb.net/?retryWrites=true&w=majority&appName=barber");
 
 const verifyUser=(req,res,next)=>{
     const token=req.cookies.token;
@@ -57,6 +58,9 @@ app.get('/Dashboard',verifyUser ,(req, res) => {
 
 })
 
+app.get("/",(req,res)=>{
+    res.json("hello");
+})
 app.get('/Dashboard_1',(req, res) => {
     TimeModel.find()
     .then(times => res.json(times))
@@ -163,7 +167,8 @@ app.post('/Login', (req, res) => {
                   const token = jwt.sign({name: user.name, email: user.email, role: user.role },
                         "jwt-secret-key")  
                     res.cookie('token', token)
-                
+                    
+                    
                     return res.json(user)
                 }else {
                     return res.json("The password is incorrect")
