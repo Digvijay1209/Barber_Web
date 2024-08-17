@@ -18,7 +18,7 @@ app.use(cors({
 }))
 app.use(cookieParser())
 
-
+require('dotenv').config(); 
 //mongoose.connect("mongodb://127.0.0.1:27017/employee");
 mongoose.connect("mongodb+srv://dig:ab@barber.it6z4k9.mongodb.net/?retryWrites=true&w=majority&appName=barber");
 
@@ -32,7 +32,7 @@ const verifyUser=(req,res,next)=>{
 
     else
     {
-        jwt.verify(token,"jwt-secret-key",(err,decoded)=>{
+        jwt.verify(token,process.env.JWT_SECRET_KEY,(err,decoded)=>{
                if(err)
                {
                 return res.json('Err wiht token')
@@ -78,7 +78,7 @@ app.get('/Dashboard_auth',verifyUser ,(req, res) => {
 app.post('/dashboard',(req,res)=>{
     const {timing, status} = req.body;
     const token=req.cookies.token;
-    jwt.verify(token,"jwt-secret-key",(err,decoded)=>{
+    jwt.verify(token,process.env.JWT_SECRET_KEY,(err,decoded)=>{
         if(err)
         {
             return res.json('Error with token');
@@ -165,7 +165,7 @@ app.post('/Login', (req, res) => {
             bcrypt.compare(password, user.password, (err, response) => {
                 if(response) {
                   const token = jwt.sign({name: user.name, email: user.email, role: user.role },
-                        "jwt-secret-key",{ expiresIn: '1h'});
+                      process.env.JWT_SECRET_KEY,{ expiresIn: '1h'});
                     res.cookie('token', token)
                     
                     
