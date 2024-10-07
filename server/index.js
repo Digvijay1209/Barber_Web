@@ -22,80 +22,63 @@ require('dotenv').config();
 //mongoose.connect("mongodb://127.0.0.1:27017/employee");
 mongoose.connect("mongodb+srv://dig:ab@barber.it6z4k9.mongodb.net/?retryWrites=true&w=majority&appName=barber");
 
-const verifyUser=(req,res,next)=>{
-    const token=req.cookies.token;
-    
-    if(!token){
-        return res.json("Token is missing")
+const verifyUser = async (req, res, next) => {
+    const token = req.cookies.token;
 
+    if (!token) {
+        return res.json("Token is missing");
     }
 
-    else
-    {
-        jwt.verify(token,process.env.JWT_SECRET_KEY,(err,decoded)=>{
-               if(err)
-               {
-                return res.json('Err wiht token')
-               }
-
-               else
-               {
-                if(decoded.role==="admin" || decoded.role==="visitor")
-                { 
-                    next()
-                }
-
-                else
-                return res.json("not allowed")
-               }
-        })
+    try {
+        const decoded = await jwt.verify(token, process.env.JWT_SECRET_KEY);
+        
+        if (decoded.role === "admin" || decoded.role === "visitor") {
+            next();
+        } else {
+            return res.json("not allowed");
+        }
+    } catch (err) {
+        return res.json('Err with token');
     }
-}
+};
 
-app.get('/Dashboard',verifyUser ,(req, res) => {
-    res.json("Success")
-    
-
-})
-
-app.get("/",(req,res)=>{
-    res.json("hello");
-})
-app.get('/Dashboard_1',(req, res) => {
-    TimeModel.find()
-    .then(times => res.json(times))
-    .catch(err => res.status(500).json({ error: err.message }));
-    
-
-})
-
-
-app.get('/Dashboard_auth',verifyUser ,(req, res) => {
-    res.json("Success")
- 
-})
-
-app.post('/dashboard',(req,res)=>{
-    const {timing, status} = req.body;
-    const token=req.cookies.token;
-    jwt.verify(token,process.env.JWT_SECRET_KEY,(err,decoded)=>{
-        if(err)
-        {
-            return res.json('Error with token');
-        }
-        else
-        {
-            const name=decoded.name;
-            console.log(name)
-            TimeModel.create({timing, name, status})
-            .then(time => res.json(time))
-            .catch(err => res.json(err))
-        }
-    });
-
-   
- 
+app.get('/Dashboard', verifyUser, async (req, res) => {
+    res.json("Success");
 });
+
+app.get("/", async (req, res) => {
+    res.json("hello");
+});
+
+app.get('/Dashboard_1', async (req, res) => {
+    try {
+        const times = await TimeModel.find();
+        return res.json(times);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/Dashboard_auth', verifyUser, async (req, res) => {
+    res.json("Success");
+});
+
+
+app.post('/dashboard', async (req, res) => {
+    const { timing, status } = req.body;
+    const token = req.cookies.token;
+
+    try {
+        const decoded = await jwt.verify(token, process.env.JWT_SECRET_KEY);
+        const name = decoded.name;
+        console.log(name);
+        const time = await TimeModel.create({ timing, name, status });
+        return res.json(time);
+    } catch (err) {
+        return res.json('Error with token');
+    }
+});
+
 
 app.post('/updated', async (req, res) => {
     const { name, time, status } = req.body; 
@@ -111,10 +94,10 @@ app.post('/updated', async (req, res) => {
         );
 
         if (updated) {
-          //  console.log('done');
+           console.log('done');
             res.status(200).json({ message: 'Updated', data: updated });
         } else {
-           //w console.log('done');
+           
             res.status(404).json({ message: 'Not found' });
         }
     } catch (error) {
@@ -126,7 +109,7 @@ app.post('/rejected', async (req, res) => {
     const { name, time } = req.body; 
 
     try {
-        // Find and delete the document based on name and timing
+      
         const deleted = await TimeModel.findOneAndDelete({ name: name, timing: time });
 
         if (deleted) {
@@ -143,42 +126,50 @@ app.post('/rejected', async (req, res) => {
 
         
    
- 
+ app.post('/register', async (req, res) => {
+    const { name, email, password } = req.body;
+
+    try {
+        const hash = await bcrypt.hash(password, 10);
+        const employees = await EmployeeModel.create({ name, email, password: hash });
+        return res.json(employees);
+    } catch (err) {
+        return res.json(err);
+    }
+});
 
 
 
-app.post('/register',(req,res)=>{
-  const {name, email, password} = req.body;
-  bcrypt.hash(password,10)
-  .then(hash=>{
-  EmployeeModel.create({name, email, password:hash})
-    .then(employees => res.json(employees))
-    .catch(err => res.json(err))
-  }).catch(err=> res.json(err))
-})
 
-app.post('/Login', (req, res) => {
-  const { email, password } = req.body;
-  const user = EmployeeModel.findOne({ email: email })
-      .then(user => {
-          if (user) {
-            bcrypt.compare(password, user.password, (err, response) => {
-                if(response) {
-                  const token = jwt.sign({name: user.name, email: user.email, role: user.role },
-                      process.env.JWT_SECRET_KEY,{ expiresIn: '1h'});
-                    res.cookie('token', token)
-                    
-                    
-                    return res.json(user)
-                }else {
-                    return res.json("The password is incorrect")
-                }
-            })
+app.post('/Login', async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        const user = await EmployeeModel.findOne({ email: email });
+
+        if (user) {
+            const response = await bcrypt.compare(password, user.password);
+
+            if (response) {
+                const token = jwt.sign(
+                    { name: user.name, email: user.email, role: user.role },
+                    process.env.JWT_SECRET_KEY,
+                    { expiresIn: '1h' }
+                );
+
+                res.cookie('token', token);
+                return res.json(user);
+            } else {
+                return res.json("The password is incorrect");
+            }
         } else {
-            return res.json("No record existed")
+            return res.json("No record existed");
         }
-    })
-})
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json("Internal Server Error");
+    }
+});
 
 
 app.listen(3001,()=>{
